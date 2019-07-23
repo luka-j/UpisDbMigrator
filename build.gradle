@@ -4,13 +4,19 @@ plugins {
 }
 
 group 'rs.lukaj.upisstats'
-version '0.1-alpha'
+version '0.8-alpha'
 
-sourceCompatibility = 1.8
+sourceCompatibility = 1.11
 
-
-application {
-    mainClassName = 'rs.lukaj.upisstats.migrator.Main'
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'rs.lukaj.upisstats.migrator.Main'
+        )
+    }
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
 }
 
 repositories {
@@ -20,6 +26,6 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
-    implementation 'com.github.luka-j:UpisScrapper:1.2.3'
+    compile 'com.github.luka-j:UpisScrapper:1.2.4.1'
     compile group: 'org.postgresql', name: 'postgresql', version: '42.2.6'
 }
