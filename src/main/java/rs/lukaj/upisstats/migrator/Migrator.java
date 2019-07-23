@@ -45,7 +45,7 @@ public class Migrator implements AutoCloseable, Closeable {
     public void loadToDatabase(String dataYear) throws SQLException {
         if (tablesExist() && !Main.OVERWRITE_DATA) throw new RuntimeException("Data is already there!");
 
-        DownloadController.DATA_FOLDER = new File("/home/luka/Documents/upis/data/" + dataYear);
+        DownloadController.DATA_FOLDER = DownloadController.generateDataFolder(dataYear);
         UceniciBase.load();
 
         log("Loaded data from files; starting migration.");
