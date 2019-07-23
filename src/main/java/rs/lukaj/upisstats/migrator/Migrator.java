@@ -45,7 +45,7 @@ public class Migrator implements AutoCloseable, Closeable {
     public void loadToDatabase(String dataYear) throws SQLException {
         if (tablesExist() && !Main.OVERWRITE_DATA) throw new RuntimeException("Data is already there!");
 
-        DownloadController.DATA_FOLDER = DownloadController.generateDataFolder(dataYear);
+        DownloadController.DATA_FOLDER = new File("/home/luka/Documents/upis/data/" + dataYear);
         UceniciBase.load();
 
         log("Loaded data from files; starting migration.");
@@ -69,14 +69,14 @@ public class Migrator implements AutoCloseable, Closeable {
                 "upisano_1k, upisano_2k, kvota_2k, min_bodova_1k, min_bodova_2k, broj_ucenika) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
         for (SmerW smer : smerovi) {
-            stmt.setString(1, smer.sifra);
-            stmt.setString(2, smer.skola);
-            stmt.setString(3, smer.opstina);
-            stmt.setString(4, smer.okrug);
-            stmt.setString(5, smer.smer);
-            stmt.setString(6, smer.podrucje);
+            stmt.setString(1, Utils.stripSpecialChars(smer.sifra));
+            stmt.setString(2, Utils.stripSpecialChars(smer.skola));
+            stmt.setString(3, Utils.stripSpecialChars(smer.opstina));
+            stmt.setString(4, Utils.stripSpecialChars(smer.okrug));
+            stmt.setString(5, Utils.stripSpecialChars(smer.smer));
+            stmt.setString(6, Utils.stripSpecialChars(smer.podrucje));
             stmt.setInt(7, smer.kvota);
-            stmt.setString(8, smer.jezik);
+            stmt.setString(8, Utils.stripSpecialChars(smer.jezik));
             stmt.setInt(9, smer.trajanje);
             stmt.setInt(10, smer.kvotaUmanjenje);
             stmt.setInt(11, smer.upisano1k);
@@ -99,10 +99,10 @@ public class Migrator implements AutoCloseable, Closeable {
                 "svi_bodova_ukupno, svi_bodova_zavrsni, svi_bodova_ocene, svi_prosek_ukupno, id, broj_ucenika) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
         for (OsnovnaW os : osnovne) {
-            stmt.setString(1, os.naziv);
-            stmt.setString(2, os.opstina);
-            stmt.setString(3, os.opstina);
-            stmt.setString(4, os.okrug);
+            stmt.setString(1, Utils.stripSpecialChars(os.naziv));
+            stmt.setString(2, Utils.stripSpecialChars(os.opstina));
+            stmt.setString(3, Utils.stripSpecialChars(os.opstina));
+            stmt.setString(4, Utils.stripSpecialChars(os.okrug));
             stmt.setInt(5, os.brojUcenika);
             stmt.setInt(6, os.ucenikaZavrsilo);
             stmt.setInt(7, os.nijeZavrsilo);
@@ -129,7 +129,7 @@ public class Migrator implements AutoCloseable, Closeable {
     private long getSmerId(String sifra) throws SQLException {
         PreparedStatement stmt = pool.get("SELECT id FROM " + TableNames.SMEROVI.getName(dbYear) +
                 " WHERE sifra=?");
-        stmt.setString(1, sifra);
+        stmt.setString(1, Utils.stripSpecialChars(sifra));
         try (stmt; ResultSet res = stmt.executeQuery()) {
             if (!res.next()) return -1;
             return res.getLong(1);
@@ -160,7 +160,7 @@ public class Migrator implements AutoCloseable, Closeable {
 
                 long start = System.nanoTime();
                 stmt.setInt(1, uc.sifra);
-                stmt.setString(2, uc.drugiStrani);
+                stmt.setString(2, Utils.stripSpecialChars(uc.drugiStrani));
                 stmt.setDouble(3, uc.sestiRaz.prosekOcena);
                 stmt.setDouble(4, uc.sedmiRaz.prosekOcena);
                 stmt.setDouble(5, uc.osmiRaz.prosekOcena);
@@ -179,8 +179,8 @@ public class Migrator implements AutoCloseable, Closeable {
                 stmt.setDouble(18, uc.najboljiBlizanacBodovi);
                 stmt.setInt(19, uc.blizanacSifra);
                 stmt.setDouble(20, uc.bodovaAM);
-                stmt.setString(21, uc.maternji);
-                stmt.setString(22, uc.prviStrani);
+                stmt.setString(21, Utils.stripSpecialChars(uc.maternji));
+                stmt.setString(22, Utils.stripSpecialChars(uc.prviStrani));
                 stmt.setBoolean(23, uc.vukovaDiploma);
                 stmt.setBoolean(24, uc.prioritet);
                 stmt.setLong(25, uc.osnovna.id);
@@ -260,7 +260,7 @@ public class Migrator implements AutoCloseable, Closeable {
         PreparedStatement stmt = pool.get(prijemniSql);
         for(Map.Entry<String, Double> p : uc.prijemni.entrySet()) {
             stmt.setLong(1, ucenikId);
-            stmt.setString(2, p.getKey());
+            stmt.setString(2, Utils.stripSpecialChars(p.getKey()));
             stmt.setDouble(3, p.getValue());
             stmt.addBatch();
         }
@@ -272,7 +272,7 @@ public class Migrator implements AutoCloseable, Closeable {
         PreparedStatement stmt = pool.get("INSERT INTO " + TableNames.TAKMICENJA.getName(dbYear) + "(" +
                 "ucenik_id, predmet, bodova, mesto, rang) VALUES (?, ?, ?, ?, ?)");
         stmt.setLong(1, id);
-        stmt.setString(2, tak.predmet);
+        stmt.setString(2, Utils.stripSpecialChars(tak.predmet));
         stmt.setDouble(3, tak.bodova);
         stmt.setInt(4, tak.mesto);
         stmt.setInt(5, tak.nivo);
@@ -328,10 +328,12 @@ public class Migrator implements AutoCloseable, Closeable {
             int r7 = uc.sedmiRaz.ocene.getOrDefault(p, 0);
             int r8 = uc.osmiRaz.ocene.getOrDefault(p, 0);
             int nonzero = 3 - Utils.count(0, r6, r7, r8);
-            double avg;
-            if(nonzero > 0) avg = (double)(r6+r7+r8)/nonzero;
-            else            avg = 0;
-            stmt.setDouble(i, avg);
+            if(nonzero > 0) {
+                double avg = (double)(r6+r7+r8)/nonzero;
+                stmt.setDouble(i, avg);
+            } else {
+                stmt.setNull(i, Types.DOUBLE);
+            }
             i++;
         }
         stmt.setLong(i, id);
