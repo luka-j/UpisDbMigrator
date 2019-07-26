@@ -14,8 +14,10 @@ public class Profiler {
     }
 
     public static void printTimes() {
-        times.entrySet().stream()
-                .sorted(Collections.reverseOrder(Comparator.comparingLong(Map.Entry::getValue)))
-                .forEach(System.out::println);
+        if(Main.LOG_DEBUG) {
+            times.entrySet().stream()
+                    .sorted(Collections.reverseOrder(Comparator.comparingLong(Map.Entry::getValue)))
+                    .forEach(System.out::println);
+        }
     }
 }

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 
+import static rs.lukaj.upisstats.migrator.Main.debug;
 import static rs.lukaj.upisstats.migrator.Main.log;
 
 public class Migrator implements AutoCloseable, Closeable {
@@ -43,9 +44,7 @@ public class Migrator implements AutoCloseable, Closeable {
     }
 
     public void loadToDatabase(String dataYear) throws SQLException {
-        if (tablesExist() && !Main.OVERWRITE_DATA) throw new RuntimeException("Data is already there!");
-
-        DownloadController.DATA_FOLDER = new File("/home/luka/Documents/upis/data/" + dataYear);
+        DownloadController.DATA_FOLDER = new File(Main.DATA_ROOT, dataYear);
         UceniciBase.load();
 
         log("Loaded data from files; starting migration.");
@@ -155,7 +154,7 @@ public class Migrator implements AutoCloseable, Closeable {
         PreparedStatement idStmt = pool.get("SELECT currval('" + TableNames.UCENICI.getSequenceName(dbYear) + "')");
         try {
             UceniciBase.svi().forEach((ThrowingSqlConsumer<UcenikW>) uc -> {
-                if (++loadingCount % 5000 == 0) log("Loaded " + loadingCount + " ucenika.");
+                if (++loadingCount % 5000 == 0) debug("Loaded " + loadingCount + " ucenika.");
                 if (loadingCount % 10000 == 0) Profiler.printTimes();
 
                 long start = System.nanoTime();
@@ -218,7 +217,7 @@ public class Migrator implements AutoCloseable, Closeable {
             long zeljeBatch = System.nanoTime();
             pool.executeBatch(zeljeSql);
             long endBatches = System.nanoTime();
-            log("Executed " + (count + 2) + " batches. Finishing.");
+            debug("Executed " + (count + 2) + " batches. Finishing.");
             conn.commit();
             long commit = System.nanoTime();
             Profiler.addTime("uceniciBatches", prijemniBatch-otherBatches);
@@ -367,7 +366,7 @@ public class Migrator implements AutoCloseable, Closeable {
     private void calcAverage(String col, String groupingCol, TableNames table) throws SQLException {
         String ucTable = TableNames.UCENICI.getName(dbYear);
         String grTable = table.getName(dbYear);
-        log("Calc avg for " + col + " @ " + groupingCol);
+        debug("Calc avg for " + col + " @ " + groupingCol);
         PreparedStatement stmt = conn.prepareStatement("update " + grTable + " set " + col +
                 "=(select avg(" + col + ") from " + ucTable +
                 " where " + groupingCol + "=" + grTable + ".id)");

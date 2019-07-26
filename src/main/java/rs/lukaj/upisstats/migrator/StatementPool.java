@@ -8,7 +8,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-import static rs.lukaj.upisstats.migrator.Main.log;
+import static rs.lukaj.upisstats.migrator.Main.debug;
 
 public class StatementPool implements Closeable {
     private Map<String, PreparedStatement> pool = new HashMap<>();
@@ -38,7 +38,7 @@ public class StatementPool implements Closeable {
         int batchesExecuted = 0;
         for(Map.Entry<String, PreparedStatement> e : pool.entrySet()) {
             if(e.getKey().startsWith(prefix)) {
-                log("Executing " + e.getKey());
+                debug("Executing " + e.getKey());
                 e.getValue().executeBatch();
                 batchesExecuted++;
             }
