@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'rs.lukaj.upisstats'
-version '18.0-beta'
+version '19.0-release'
 
 compileJava.options.encoding = 'UTF-8'
 sourceCompatibility = 1.11
