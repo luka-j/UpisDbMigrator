@@ -27,6 +27,8 @@ public class Migrator implements AutoCloseable, Closeable {
                 "smer_id, ucenik_id, ispunio_uslov, bodova_za_upis, krug, redni_broj) VALUES (?, ?, ?, ?, ?, ?)";
         prijemniSql = "INSERT INTO " + TableNames.PRIJEMNI.getName(dbYear) + "(" +
                 "ucenik_id, naziv_ispita, bodova) VALUES (?, ?, ?)";
+        takmicenjaSql = "INSERT INTO " + TableNames.TAKMICENJA.getName(dbYear) + "(" +
+                "ucenik_id, predmet, bodova, mesto, rang) VALUES (?, ?, ?, ?, ?)";
     }
 
     public boolean tablesExist() throws SQLException {
@@ -44,6 +46,7 @@ public class Migrator implements AutoCloseable, Closeable {
     }
 
     public void loadToDatabase(String dataYear) throws SQLException {
+        UceniciBase.clear();
         DownloadController.DATA_FOLDER = new File(Main.DATA_ROOT, dataYear);
         UceniciBase.load();
 
@@ -214,6 +217,7 @@ public class Migrator implements AutoCloseable, Closeable {
             int count = pool.executeBatchesPrefix("UPDATE " + TableNames.UCENICI.getName(dbYear) + " SET ");
             long prijemniBatch = System.nanoTime();
             pool.executeBatch(prijemniSql);
+            pool.executeBatch(takmicenjaSql);
             long zeljeBatch = System.nanoTime();
             pool.executeBatch(zeljeSql);
             long endBatches = System.nanoTime();
@@ -221,7 +225,7 @@ public class Migrator implements AutoCloseable, Closeable {
             conn.commit();
             long commit = System.nanoTime();
             Profiler.addTime("uceniciBatches", prijemniBatch-otherBatches);
-            Profiler.addTime("prijemniBatch", zeljeBatch - prijemniBatch);
+            Profiler.addTime("prijemni&takmicenjaBatch", zeljeBatch - prijemniBatch);
             Profiler.addTime("zeljeBatch", endBatches - zeljeBatch);
             Profiler.addTime("commitUcenici", commit - endBatches);
             Profiler.printTimes();
@@ -265,17 +269,17 @@ public class Migrator implements AutoCloseable, Closeable {
         }
     }
 
+    private String takmicenjaSql;
     private void loadTakmicenja(UcenikW uc, long id) throws SQLException {
         UcenikW.Takmicenje tak = uc.takmicenje;
         if(tak == null) return;
-        PreparedStatement stmt = pool.get("INSERT INTO " + TableNames.TAKMICENJA.getName(dbYear) + "(" +
-                "ucenik_id, predmet, bodova, mesto, rang) VALUES (?, ?, ?, ?, ?)");
+        PreparedStatement stmt = pool.get(takmicenjaSql);
         stmt.setLong(1, id);
         stmt.setString(2, Utils.stripSpecialChars(tak.predmet));
         stmt.setDouble(3, tak.bodova);
         stmt.setInt(4, tak.mesto);
         stmt.setInt(5, tak.nivo);
-        stmt.executeUpdate();
+        stmt.addBatch();
     }
 
     private void loadOcene(UcenikW uc, long id) throws SQLException {
@@ -309,14 +313,22 @@ public class Migrator implements AutoCloseable, Closeable {
     private void populateUcenikAverages(UcenikW uc, long id) throws SQLException {
         String table = TableNames.UCENICI.getName(dbYear);
         Set<String> predmeti = new HashSet<>();
-        uc.sestiRaz.ocene.keySet().forEach((p) -> predmeti.add(getDbName(p)));
-        uc.sedmiRaz.ocene.keySet().forEach((p) -> predmeti.add(getDbName(p)));
-        uc.osmiRaz.ocene.keySet().forEach((p) -> predmeti.add(getDbName(p)));
+        Set<String> usedColnames = new HashSet<>();
+        predmeti.addAll(uc.sestiRaz.ocene.keySet());
+        predmeti.addAll(uc.sedmiRaz.ocene.keySet());
+        predmeti.addAll(uc.osmiRaz.ocene.keySet());
         if(predmeti.isEmpty()) return;
+        //we're using a single PreparedStatement for everything here for performance
         StringBuilder sql = new StringBuilder("UPDATE " + table + " SET ");
-        for(String p : predmeti) {
-            String colName = getDbName(p) + "_p";
-            sql.append(colName).append("=?,");
+        for (Iterator<String> it = predmeti.iterator(); it.hasNext();) {
+            String predmet = getDbName(it.next());
+            if(!usedColnames.contains(predmet)) {
+                usedColnames.add(predmet);
+                String colName = predmet + "_p";
+                sql.append(colName).append("=?,");
+            } else {
+                it.remove();
+            }
         }
         sql.deleteCharAt(sql.length()-1);
         sql.append(" WHERE id=?");
