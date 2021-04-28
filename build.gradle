@@ -1,24 +1,15 @@
 plugins {
     id 'java'
     id 'application'
+    id 'com.github.johnrengelman.shadow' version '7.0.0'
 }
 
 group 'rs.lukaj.upisstats'
-version '19.1-release'
+version '20.1-release'
 
+application.mainClassName('rs.lukaj.upisstats.migrator.Main')
 compileJava.options.encoding = 'UTF-8'
 sourceCompatibility = 1.11
-
-jar {
-    manifest {
-        attributes(
-                'Main-Class': 'rs.lukaj.upisstats.migrator.Main'
-        )
-    }
-    from {
-        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
-    }
-}
 
 repositories {
     mavenCentral()
@@ -26,7 +17,6 @@ repositories {
 }
 
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.12'
-    compile 'com.github.luka-j:UpisScrapper:1.2.4.1'
-    compile group: 'org.postgresql', name: 'postgresql', version: '42.2.6'
+    implementation 'com.github.luka-j:UpisScraper:1.4.1'
+    implementation group: 'org.postgresql', name: 'postgresql', version: '42.2.6'
 }

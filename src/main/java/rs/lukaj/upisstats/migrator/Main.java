@@ -9,9 +9,9 @@ public class Main {
     public static final boolean LOG = true;
     public static final boolean LOG_DEBUG = false;
 
-    public static final File    DATA_ROOT = new File("/home/luka/Documents/upis/data");
-    private static int     dbYear        = 2017;
-    private static String  dataYear      = "17";
+    public static final File    DATA_ROOT = new File("/tmpdata/UpisData");
+    private static int     dbYear        = 2020;
+    private static String  dataYear      = "20";
 
     public static void main(String[] args) {
         String user = System.getenv("PG_USER");
@@ -20,12 +20,12 @@ public class Main {
         if(name == null) name = System.getenv("PG_DBNAME");
         for(String year : args) {
             try {
-                System.out.println("Loading data for year " + year);
+                debug("Loading data for year " + year);
                 setYear(Integer.parseInt(year));
                 doMigrate(user, pass, name);
-                System.out.println("Finished migration for " + year);
+                debug("Finished migration for " + year);
             } catch (NumberFormatException ex) {
-                System.err.println("Invalid year: " + year);
+                debug("Invalid year: " + year);
             }
         }
         if(args.length == 0) doMigrate(user, pass, name); //if no args are supplied, use default
